@@ -1,50 +1,26 @@
-import * as fs from "fs";
-import zlib from 'zlib';
-import crypto from 'crypto';
+import { _genHexHash, _hashObject, _writeObject } from './utils.mjs'
 
 const args = process.argv.slice(2);
 
 const [option, hashArg] = args;
 
 
-function checkFileExistsSync(filePath) {
-    try {
-      fs.accessSync(filePath, fs.constants.F_OK);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
 
 function hashObject() {
   const filename = option.startsWith("-") ? hashArg : option;
 
-  if (!checkFileExistsSync(filename)) {
-    console.log(`${filename} does not exist.`);
+  const fileItem = _hashObject(filename)
+
+  if (!fileItem) {
     return
   }
 
   try {
-    const content = fs.readFileSync(filename)
-
-    const header = Buffer.from(`blob ${content.length}\0`)
-
-    const saveContent = Buffer.concat([header, content])
-
-    const hash = crypto.createHash("sha1").update(saveContent).digest("hex");
-    
-    process.stdout.write(hash);
-
-
+    process.stdout.write(fileItem.hash);
     if (option.startsWith("-")) {
         switch(option) {
             case '-w':
-                const dir = hash.substring(0, 2);
-                const filename = hash.substring(2);
-                const compressedBuffer = zlib.deflateSync(saveContent);
-                fs.mkdirSync(`.git/objects/${dir}`, { recursive: true });
-                fs.writeFileSync(`.git/objects/${dir}/${filename}`, compressedBuffer);
+                _writeObject(fileItem.hash, fileItem.content)
                 break;
             default: 
                 console.error("Invalid option");
@@ -56,7 +32,3 @@ function hashObject() {
 }
 
 hashObject();
-
-
-
-
